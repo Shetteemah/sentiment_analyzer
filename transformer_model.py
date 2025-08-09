@@ -20,6 +20,7 @@ labels = np.array(labels)
 def create_transformer_model(vocab_size, max_length):
     inputs = tf.keras.layers.Input(shape=(max_length,)) #input layer
 
+    #removed `input_length` after getting UserWarning: "Argument input_length is deprecated. Just remove it."
     embedding = tf.keras.layers.Embedding(vocab_size, 8)(inputs) #embedding layer: convert nums -> dense vectors
 
     #transformer layer (simplified with Multi-Head Attention)
@@ -27,7 +28,8 @@ def create_transformer_model(vocab_size, max_length):
     attention = tf.keras.layers.Dropout(0.1)(attention) #prevent overfitting
     attention = tf.keras.layers.LayerNormalization(epsilon=1e-6)(attention)
 
-    attention = tf.keras.layers.Flatten()(attention) #Flatten to match Dense input befroe proceeding to output
+    #Flatten to match Dense input befroe proceeding to output
+    attention = tf.keras.layers.Flatten()(attention)
     outputs = tf.keras.layers.Dense(1, activation="sigmoid")(attention) #output layeer (0/1 -ve/+ve)
 
     #create model
