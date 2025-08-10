@@ -15,10 +15,17 @@ import numpy as np
 dataset = load_dataset("imdb")
 
 #extract reviews and labels
-train_reviews = dataset["train"]["text"]
-train_labels = dataset["train"]["label"] #1 or 0 +ve/-ve
-test_reviews = dataset["test"]["text"]
-test_labels = dataset["test"]["label"]
+train_reviews = list(dataset["train"]["text"])
+train_labels = list(dataset["train"]["label"]) #1 or 0 +ve/-ve
+test_reviews = list(dataset["test"]["text"])
+test_labels = list(dataset["test"]["label"])
+
+#The full IMDB 50k dataset seems too large for my hardware (indicated by lack of CUDA drivers).
+#I’ll use 10,000 train, 2,000 test to balance performance and memory.
+train_reviews = train_reviews[:10000]
+train_labels = train_labels[:10000]
+test_reviews = test_reviews[:2000]
+test_labels = test_labels[:2000]
 
 #combine for model's use
 reviews = train_reviews + test_reviews

@@ -87,10 +87,11 @@ print("Test labels shape:", test_labels.shape)
 
 #train model
 model.fit(
-    train_sequences, 
-    train_labels, 
-    epochs=5, 
-    batch_size=16, 
+    train_sequences,
+    train_labels,
+    epochs=3,
+    batch_size=32,
+    validation_data=(test_sequences, test_labels),
     verbose=1
 )
 
@@ -99,9 +100,9 @@ def predict_sentiment(review):
     # sequence = [word_to_id.get(word, 0) for word in review.split()] #0 for unknown words
     # padded = tf.keras.preprocessing.sequence.pad_sequences([sequence], maxlen=max_length, padding="post")
     encoded = tokenize_reviews([review], max_length)
-    prediction = model.predict(encoded)[0][0]
+    prediction = model.predict(encoded, verbose=0)[0][0]
     return "Positive" if prediction > 0.5 else "Negative"
 
 #test with new review
-new_review = "This film is amazing!"
+new_review = "This film is good!"
 print(f"Sentiment for '{new_review}': {predict_sentiment(new_review)}")
