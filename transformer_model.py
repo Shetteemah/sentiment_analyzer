@@ -1,8 +1,8 @@
 import tensorflow as tf
-import pandas as pd
 import numpy as np
 from data import reviews, labels
 from transformers import BertTokenizer
+from tensorflow.keras.callbacks import EarlyStopping
 
 #init BERT tokenizer
 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
@@ -31,13 +31,6 @@ def tokenize_reviews(reviews, max_length):
 
 #convert reviews into tokenized sequences
 padded_sequences = tokenize_reviews(reviews, max_length)
-
-#convert labels -> numpy array
-labels = np.array(labels, dtype=np.float32) #also confirms type
-
-#preview dataset size for verification
-print(f"Total reviews: {len(reviews)}")
-print(f"Total labels: {len(labels)}")
 
 #split into train and test sets e.g 80% train, 20% test
 train_size = int(0.8 * len(reviews))
@@ -79,7 +72,14 @@ vocab_size = tokenizer.vocab_size #BERT tokenizer vocab size ~30k
 model = create_transformer_model(vocab_size, max_length)
 model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
 
-#debug
+#debug 1 (early stoppage to prevent overfitting)
+early_stopping = EarlyStopping(
+    monitor="val_loss",
+    patience=2,
+    restore_best_weights=True
+)
+
+#debug 2
 print("Train sequences shape:", train_sequences.shape)
 print("Train labels shape:", train_labels.shape)
 print("Test sequences shape:", test_sequences.shape)
@@ -89,9 +89,10 @@ print("Test labels shape:", test_labels.shape)
 model.fit(
     train_sequences,
     train_labels,
-    epochs=3,
+    epochs=10,
     batch_size=32,
     validation_data=(test_sequences, test_labels),
+    callbacks=[early_stopping],
     verbose=1
 )
 
@@ -100,9 +101,21 @@ def predict_sentiment(review):
     # sequence = [word_to_id.get(word, 0) for word in review.split()] #0 for unknown words
     # padded = tf.keras.preprocessing.sequence.pad_sequences([sequence], maxlen=max_length, padding="post")
     encoded = tokenize_reviews([review], max_length)
-    prediction = model.predict(encoded, verbose=0)[0][0]
+    prediction = model.predict(encoded, verbose=1)[0][0]
     return "Positive" if prediction > 0.5 else "Negative"
 
 #test with new review
-new_review = "This film is good!"
+new_review = "This film is awful!"
 print(f"Sentiment for '{new_review}': {predict_sentiment(new_review)}")
+
+# Test with multiple reviews
+test_reviews = [
+    "This film is amazing!",
+    "This film is good!",
+    "This film is bad!",
+    "Terrible movie, waste of time.",
+    "Absolutely fantastic experience!"
+]
+for review in test_reviews:
+    sentiment = predict_sentiment(review)
+    print(f"Sentiment for '{review}': {sentiment}")
