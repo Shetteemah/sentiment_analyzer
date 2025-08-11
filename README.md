@@ -9,7 +9,7 @@ A Transformer-based model for sentiment analysis, classifying movie reviews as *
 - **Training**: Configured with a low learning rate (1e-6), 3 epochs, and batch size of 32.
 - **Evaluation**: Supports validation on a test set and predicts sentiments for new reviews with raw probability scores for debugging.
 
-- `Unfortunately: it currently returns positive reviews as "Negative". To be fixed.`
+<!-- `Unfortunately, it currently returns positive reviews as "Negative". To be fixed.`-->
 
 
 ## Installation
