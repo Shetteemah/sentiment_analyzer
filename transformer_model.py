@@ -1,22 +1,14 @@
 import tensorflow as tf
 import numpy as np
 from data import reviews, labels
+from test_reviews import sample_reviews
 from transformers import BertTokenizer
 from tensorflow.keras.callbacks import EarlyStopping
+import os
 
 #init BERT tokenizer
 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 max_length = 128
-
-# #tokenize: convert text to numbers
-# vocab = set(" ".join(reviews).split())
-# word_to_id = {word: i for i, word in enumerate(vocab)}
-# id_to_word = {i: word for i, word in enumerate(vocab)}
-
-# #convert reviews to sequences of numbers
-# max_length = max(len(review.split()) for review in reviews)
-# sequences = [[word_to_id[word] for word in review.split()] for review in reviews]
-# padded_sequences = tf.keras.preprocessing.sequence.pad_sequences(sequences, maxlen=max_length, padding="post")
 
 #tokenize reviews
 def tokenize_reviews(reviews, max_length):
@@ -28,16 +20,6 @@ def tokenize_reviews(reviews, max_length):
         return_tensors="tf"
     )
     return encodings["input_ids"]
-
-#convert reviews into tokenized sequences
-padded_sequences = tokenize_reviews(reviews, max_length)
-
-#split into train and test sets e.g 80% train, 20% test
-train_size = int(0.8 * len(reviews))
-train_sequences = padded_sequences[:train_size]
-train_labels = labels[:train_size]
-test_sequences = padded_sequences[train_size:]
-test_labels = labels[train_size:]
 
 #simple transformer
 def create_transformer_model(vocab_size, max_length):
@@ -67,55 +49,62 @@ def create_transformer_model(vocab_size, max_length):
     model = tf.keras.Model(inputs=inputs, outputs=outputs)
     return model
 
-#create and compile model
-vocab_size = tokenizer.vocab_size #BERT tokenizer vocab size ~30k
-model = create_transformer_model(vocab_size, max_length)
-model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
+model_path = "sentiment_predictor.h5"
 
-#debug 1 (early stoppage to prevent overfitting)
-early_stopping = EarlyStopping(
-    monitor="val_loss",
-    patience=2,
-    restore_best_weights=True
-)
+#check for existing trained model
+if os.path.exists(model_path):
+    print(f"Loading trained model from {model_path}")
+    model = tf.keras.models.load_model(model_path)
+else:
+    #convert reviews into tokenized sequences
+    padded_sequences = tokenize_reviews(reviews, max_length)
 
-#debug 2
-print("Train sequences shape:", train_sequences.shape)
-print("Train labels shape:", train_labels.shape)
-print("Test sequences shape:", test_sequences.shape)
-print("Test labels shape:", test_labels.shape)
+    #split into train and test sets e.g 80% train, 20% test
+    train_size = int(0.8 * len(reviews))
+    train_sequences = padded_sequences[:train_size]
+    train_labels = labels[:train_size]
+    test_sequences = padded_sequences[train_size:]
+    test_labels = labels[train_size:]
 
-#train model
-model.fit(
-    train_sequences,
-    train_labels,
-    epochs=10,
-    batch_size=32,
-    validation_data=(test_sequences, test_labels),
-    callbacks=[early_stopping],
-    verbose=1
-)
+    #create and compile model
+    vocab_size = tokenizer.vocab_size #BERT tokenizer vocab size ~30k
+    model = create_transformer_model(vocab_size, max_length)
+    model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
+
+    #debug 1 (early stoppage to prevent overfitting)
+    early_stopping = EarlyStopping(
+        monitor="val_loss",
+        patience=2,
+        restore_best_weights=True
+    )
+
+    #debug 2
+    print("\nTrain sequences shape:", train_sequences.shape)
+    print("Train labels shape:", train_labels.shape)
+    print("Test sequences shape:", test_sequences.shape)
+    print("Test labels shape:", test_labels.shape, "\n")
+
+    #train model
+    model.fit(
+        train_sequences,
+        train_labels,
+        epochs=10,
+        batch_size=32,
+        validation_data=(test_sequences, test_labels),
+        callbacks=[early_stopping],
+        verbose=1
+    )
+
+    #save trained model
+    model.save(model_path)
+    print(f"Saved trained model to {model_path}")
 
 #test model
 def predict_sentiment(review):
-    # sequence = [word_to_id.get(word, 0) for word in review.split()] #0 for unknown words
-    # padded = tf.keras.preprocessing.sequence.pad_sequences([sequence], maxlen=max_length, padding="post")
     encoded = tokenize_reviews([review], max_length)
     prediction = model.predict(encoded, verbose=1)[0][0]
-    return "Positive" if prediction > 0.5 else "Negative"
+    return "Positive" if prediction > 0.5 else "Negative", prediction
 
-#test with new review
-new_review = "This film is awful!"
-print(f"Sentiment for '{new_review}': {predict_sentiment(new_review)}")
-
-# Test with multiple reviews
-test_reviews = [
-    "This film is amazing!",
-    "This film is good!",
-    "This film is bad!",
-    "Terrible movie, waste of time.",
-    "Absolutely fantastic experience!"
-]
-for review in test_reviews:
-    sentiment = predict_sentiment(review)
-    print(f"Sentiment for '{review}': {sentiment}")
+for review in sample_reviews:
+    sentiment, score = predict_sentiment(review)
+    print(f"Sentiment for '{review}': {sentiment} (score: {score:.4f})")
