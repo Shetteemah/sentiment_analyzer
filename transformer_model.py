@@ -108,3 +108,4 @@ def predict_sentiment(review):
 for review in sample_reviews:
     sentiment, score = predict_sentiment(review)
     print(f"Sentiment for '{review}': {sentiment} (score: {score:.4f})")
+    
